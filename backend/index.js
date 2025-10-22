@@ -14,7 +14,7 @@ app.post("/todo", async (req, res) => {
     const createPayload = req.body;
     const parsedPayload = createTodo.safeParse(createPayload)
     if(!parsedPayload.success) {
-        res.status(411).json({ error: parsedPayload.error })
+        return res.status(411).json({ error: parsedPayload.error })
     }
 
     await todo.create({
@@ -35,18 +35,25 @@ app.put("/completed", async (req, res) => {
     const updatedPayload = req.body;
     const parsedPayload = updateTodo.safeParse(updatedPayload)
     if(!parsedPayload.success) {
-        res.status(411).json({ error: parsedPayload.error })
+        return res.status(411).json({ error: parsedPayload.error })
     }
 
-    await todo.update({
-        _id: updatedPayload.id
-    }, {
-        completed: true
-    })
+   try {
+        const updated = await todo.findByIdAndUpdate(
+            updatedPayload.id,
+            { $set: { completed: true } },
+            { new: true } // return the updated document
+        );
 
-    res.json({
-        msg: "Todo marked as completed"
-    })
+        if (!updated) {
+            return res.status(404).json({ error: "Todo not found" });
+        }
+
+        res.json({ msg: "Todo marked as completed", todo: updated });
+    } catch (err) {
+        console.error("DB update error:", err);
+        res.status(500).json({ error: "Internal server error" });
+    }
 
 })
 
