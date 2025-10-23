@@ -1,12 +1,28 @@
-import React from 'react';
+// components/SearchInput.jsx
+
+import React, { useState, useEffect } from 'react';
 import { useRecoilState } from 'recoil';
 import { searchTermAtom } from '../state/atoms';
 
 function SearchInput() {
-    const [term, setTerm] = useRecoilState(searchTermAtom);
+    
+    const [localTerm, setLocalTerm] = useState('');
+    const [globalTerm, setGlobalTerm] = useRecoilState(searchTermAtom);
+
+    useEffect(() => {
+        // Set up a timer
+        const timer = setTimeout(() => {
+            setGlobalTerm(localTerm);
+        }, 300); // 3s delay
+
+        // Cleanup function, if the user types again, we clear previous timer
+        return () => {
+            clearTimeout(timer);
+        }
+    }, [localTerm, setGlobalTerm]);
 
     return(
-        <input type="text" placeholder='Search Todos...' value={term} onChange={e => setTerm(e.target.value)} style={{marginRight: '10px'}}/>
+        <input type="text" placeholder='Search Todos...' value={localTerm} onChange={e => setLocalTerm(e.target.value)} style={{marginRight: '10px'}}/>
     );
 }
 

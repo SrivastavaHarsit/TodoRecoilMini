@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useCallback } from 'react';
 import { useRecoilRefresher_UNSTABLE } from 'recoil';
 import { todoListQuery } from '../state/selectors';
 import axios from 'axios';
@@ -8,7 +8,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 function TodoItem({ todo }) {
     const refreshTodoList = useRecoilRefresher_UNSTABLE(todoListQuery)
 
-    const handleComplete = async () => {
+    const handleComplete = useCallback(async () => {
         try {
             await axios.put(`${API_URL}/completed`, {
                 id: todo._id,
@@ -17,7 +17,7 @@ function TodoItem({ todo }) {
         } catch(err) {
             console.error('Failed to update todo:', err);
         }
-    };
+    }, [todo._id]);
 
     const itemStyle = {
     border: '1px solid #ccc',
@@ -27,6 +27,8 @@ function TodoItem({ todo }) {
     textDecoration: todo.completed ? 'line-through' : 'none',
     opacity: todo.completed ? 0.6 : 1,
   };
+
+  console.log(`Rendering TodoItem: ${todo.title}`);
 
   return (
     <div style={itemStyle}>
@@ -39,4 +41,4 @@ function TodoItem({ todo }) {
   );
 }
 
-export default TodoItem;
+export default memo(TodoItem);
