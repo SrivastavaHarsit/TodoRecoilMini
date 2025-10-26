@@ -3,7 +3,7 @@ import { atom } from 'recoil';
 
 // Atom 1: This atom holds the text the user types to search box
 export const searchTermAtom = atom({
-    key: 'searchTerAtom',
+    key: 'searchTermAtom',
     default: ''
 });
 
