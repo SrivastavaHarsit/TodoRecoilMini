@@ -18,5 +18,6 @@ const partialUpdateTodo = zod.object({
 
 module.exports = {
     createTodo,
-    updateTodo
+    updateTodo,
+    partialUpdateTodo
 }
