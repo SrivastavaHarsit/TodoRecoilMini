@@ -1,3 +1,4 @@
+// src/state/atoms.js
 import { atom } from 'recoil';
 
 // Atom 1: This atom holds the text the user types to search box

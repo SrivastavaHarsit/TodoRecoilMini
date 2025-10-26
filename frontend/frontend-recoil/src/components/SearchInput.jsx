@@ -13,7 +13,7 @@ function SearchInput() {
         // Set up a timer
         const timer = setTimeout(() => {
             setGlobalTerm(localTerm);
-        }, 300); // 3s delay
+        }, 300); // delay
 
         // Cleanup function, if the user types again, we clear previous timer
         return () => {
