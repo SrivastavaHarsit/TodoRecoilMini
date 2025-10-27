@@ -24,32 +24,39 @@ function AddTodo() {
     const tempId = `temp-${Date.now()}`;
 
     const optimistic = {
-      id: tempId,
-      title: title.trim(),
-      description: description.trim(),
-      completed: false,
-      createdAt: new Date().toISOString(),
-      dueAt: null,
+        id: tempId,
+        title: title.trim(),
+        description: description.trim(),
+        completed: false
     };
 
-    setStatusById(tempId, 'saving');
-    setTodoById(tempId, optimistic);
-    setLocalIds((prev) => [tempId, ...prev]);
-
-    setTitle('');
-    setDescription('');
-
     try {
-      const saved = await createTodo({ title: optimistic.title, description: optimistic.description });
-      setTodoById(saved.id, saved);
-      setStatusById(saved.id, 'idle');
-      setLocalIds((prev) => prev.filter((id) => id !== tempId));
-      await invalidate();
+        setStatusById(tempId, 'saving');
+        setTodoById(tempId, optimistic);
+        setLocalIds((prev) => [tempId, ...prev]);
+
+        setTitle('');
+        setDescription('');
+
+        const saved = await createTodo({ 
+        title: optimistic.title, 
+        description: optimistic.description 
+        });
+        
+        // Update the atom with saved data
+        setTodoById(saved.id, saved);
+        setStatusById(saved.id, 'idle');
+        
+        // Clean up temp id
+        setLocalIds((prev) => prev.filter((id) => id !== tempId));
+        
+        // Invalidate cache to refresh list
+        await invalidate();
     } catch (err) {
-      console.error('Add todo failed', err);
-      setStatusById(tempId, 'error');
+        console.error('Add todo failed:', err);
+        setStatusById(tempId, 'error');
     }
-  };
+ };
 
   return (
     <div style={{ marginBottom: '10px', display: 'flex', gap: 8 }}>
