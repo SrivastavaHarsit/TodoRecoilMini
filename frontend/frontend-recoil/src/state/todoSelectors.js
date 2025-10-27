@@ -24,11 +24,17 @@ export const todoListQuery = selector({
 });
 
 // write-only selector: seed the cache with a list result (avoids N+1)
+// N = number of rows to render.
+
+// Naive approach: parent fetches list of IDs, then every TodoItem calls an API to fetch its own data → total = 1 (list) + N (per-item) = N+1 fetches.
+
+// Better: fetch full page of items once. Then pre-populate (seed) a per-id cache so TodoItem can synchronously read its data with no extra network calls. That’s what seedTodosCacheSelector does.
 export const seedTodosCacheSelector = selector({
   key: 'seedTodosCacheSelector',
   get: () => null,
   set: ({ set }, newValue) => {
     const incoming = Array.isArray(newValue) ? newValue : [];
+    // We update todosCacheAtom by passing a function. Recoil will call that function with the current value of todosCacheAtom (prev). Using a function ensures safe concurrent updates.
     set(todosCacheAtom, (prev) => {
       const next = { ...(prev || {}) };
       for (const t of incoming) {
@@ -38,6 +44,7 @@ export const seedTodosCacheSelector = selector({
     });
   },
 });
+
 
 // global, atom-driven filtered IDs (simple mode)
 export const filteredTodoIdsSelector = selector({
