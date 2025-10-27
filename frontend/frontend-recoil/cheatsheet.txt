@@ -1,0 +1,16 @@
+todoListQueryFamily(params) → “give me the list.”
+
+seedTodosCacheSelector(list) → “remember these by id.”
+
+filteredTodoIdsSelector → “which IDs should I render right now?”
+
+todoAtomFamily(id) → “single source of truth for that todo.”
+
+default: cache first → fetch by id (no cycles, no N+1).
+
+mutationStatusAtomFamily(id) → “saving / error badge.”
+
+useRecoilValueLoadable → “no Suspense, no ErrorBoundary; I’ll render each state myself.” 
+recoiljs.org
+
+useRecoilCallback (in AddTodo) → “set atomFamily with a dynamic id at event time (hooks rule stays happy).”

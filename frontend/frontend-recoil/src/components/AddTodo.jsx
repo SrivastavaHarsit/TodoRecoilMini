@@ -1,43 +1,63 @@
-// components/AddTodo.jsx
-
+// src/components/AddTodo.jsx
 import React, { useState } from 'react';
-import { useRecoilRefresher_UNSTABLE } from 'recoil';
-import { todoListQuery } from '../state/selectors';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { useRecoilCallback, useSetRecoilState } from 'recoil';
+import { createTodo } from '../api/todos';
+import { todoAtomFamily, mutationStatusAtomFamily, localAddedIdsAtom } from '../state/todoAtoms';
+import { useInvalidateTodos } from '../utils/recoilInvalidate';
 
 function AddTodo() {
-    const [title, setTitle] = useState('');
-    const [description, setDescription] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const setLocalIds = useSetRecoilState(localAddedIdsAtom);
+  const invalidate = useInvalidateTodos();
 
-    const refreshTodoList = useRecoilRefresher_UNSTABLE(todoListQuery);
+  const setTodoById = useRecoilCallback(({ set }) => (id, value) => {
+    set(todoAtomFamily(id), value);
+  }, []);
 
-    const handleAdd = async () => {
-        if(!title) return;
-        try {
-            await axios.post(`${API_URL}/todo`, {
-                title,
-                description,
-            });
+  const setStatusById = useRecoilCallback(({ set }) => (id, value) => {
+    set(mutationStatusAtomFamily(id), value);
+  }, []);
 
-            // Clear fields and refresh list
-            setTitle('');
-            setDescription('');
-            refreshTodoList();
-        } catch(err) {
-            console.error('Failed to add todo:', err);
-        }
+  const handleAdd = async () => {
+    if (!title.trim()) return;
+    const tempId = `temp-${Date.now()}`;
+
+    const optimistic = {
+      id: tempId,
+      title: title.trim(),
+      description: description.trim(),
+      completed: false,
+      createdAt: new Date().toISOString(),
+      dueAt: null,
     };
 
-    return (
-        <div style={{ marginBottom: '10px' }}>
-            <input type="text" placeholder='Title' value={title} onChange={e => setTitle(e.target.value)}/>
-            <input type="text" placeholder='Description' value={description} onChange={e => setDescription(e.target.value)}/>
-            <button onClick={handleAdd}>Add Todo</button>
+    setStatusById(tempId, 'saving');
+    setTodoById(tempId, optimistic);
+    setLocalIds((prev) => [tempId, ...prev]);
 
-        </div>
-    );
+    setTitle('');
+    setDescription('');
+
+    try {
+      const saved = await createTodo({ title: optimistic.title, description: optimistic.description });
+      setTodoById(saved.id, saved);
+      setStatusById(saved.id, 'idle');
+      setLocalIds((prev) => prev.filter((id) => id !== tempId));
+      await invalidate();
+    } catch (err) {
+      console.error('Add todo failed', err);
+      setStatusById(tempId, 'error');
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: '10px', display: 'flex', gap: 8 }}>
+      <input type="text" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
+      <input type="text" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
+      <button onClick={handleAdd}>Add Todo</button>
+    </div>
+  );
 }
 
 export default AddTodo;

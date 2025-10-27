@@ -1,33 +1,53 @@
-// componenets/TodoList.jsx
-
-import React from 'react';
-import { useRecoilValue } from 'recoil';
-import { filteredTodoListSelector } from '../state/selectors';
+// src/components/TodoList.jsx
+import React, { useEffect } from 'react';
+import { useRecoilValueLoadable, useSetRecoilState } from 'recoil';
+import {
+  filteredTodoIdsSelector,
+  todoListQueryFamily,
+  seedTodosCacheSelector,
+} from '../state/todoSelectors';
 import TodoItem from './TodoItem';
 import SearchInput from './SearchInput';
 import AddTodo from './AddTodo';
 import TodoListFilters from './TodoListFilters';
 
-
 function TodoList() {
+  // read filtered IDs as a Loadable so we control loading & error
+  const idsL = useRecoilValueLoadable(filteredTodoIdsSelector);
 
-    const list = useRecoilValue(filteredTodoListSelector);
+  // also read the raw list for cache seeding (as a Loadable)
+  const listL = useRecoilValueLoadable(todoListQueryFamily({ page: 1, pageSize: 200 }));
+  const seedCache = useSetRecoilState(seedTodosCacheSelector);
 
-    return (
-        <div>
-            <AddTodo />
-            <div style={{ marginBottom: '20px' }}>
-                <SearchInput />
-                <TodoListFilters />
-            </div>
-            <hr />
+  // seed cache only when the list has a value
+  useEffect(() => {
+    if (listL.state === 'hasValue') seedCache(listL.contents);
+  }, [listL.state, listL.contents, seedCache]);
 
-            {list.length === 0 ? (<p>No todos match your search</p>) : (list.map(todo => (
-                <TodoItem key={todo._id} todo={todo} />
-            )))}
+  return (
+    <div>
+      <AddTodo />
+      <div style={{ marginBottom: '20px', display: 'flex', gap: 8 }}>
+        <SearchInput />
+        <TodoListFilters />
+      </div>
+      <hr />
 
-        </div>
-    );
+      {idsL.state === 'loading' && <p>Loading todos...</p>}
+      {idsL.state === 'hasError' && (
+        <p style={{ color: 'crimson' }}>
+          Failed to load todos: {String(idsL.contents?.message || idsL.contents)}
+        </p>
+      )}
+      {idsL.state === 'hasValue' && (
+        idsL.contents.length === 0 ? (
+          <p>No todos match your search</p>
+        ) : (
+          idsL.contents.map((id) => <TodoItem key={id} id={id} />)
+        )
+      )}
+    </div>
+  );
 }
 
 export default TodoList;
