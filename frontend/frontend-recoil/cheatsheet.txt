@@ -14,3 +14,50 @@ useRecoilValueLoadable → “no Suspense, no ErrorBoundary; I’ll render each 
 recoiljs.org
 
 useRecoilCallback (in AddTodo) → “set atomFamily with a dynamic id at event time (hooks rule stays happy).”
+
+
+
+USER clicks “Toggle Completed” on TodoItem with id = X
+    |
+    V
+TodoItem component (id = X) handles the click:
+    • setStatusAtomFamily(X) = "saving"
+    • todoAtomFamily(X) is updated optimistically → completed toggled locally
+    • API call: toggle / PATCH / PUT request sent to server for id = X
+    |
+    V
+API returns success (updated todo object for id = X)
+    |
+    V
+Now: want UI to reflect changes everywhere: list should show updated completed status, details should update, etc.
+    |
+    V
+---  OLD METHOD (problem) ---
+    • You called useRecoilRefresher_UNSTABLE(todoListQueryFamily({}))  [maybe with {} params]
+    • That clears the cache for list with params = {}  
+    • But if your UI list is rendering todoListQueryFamily({ search: “gym”, filter: “Show All” }), then you cleared the **wrong instance** → UI still uses its old cached list  
+    • Item atomFamily(X) may still hold stale data (unless you updated it manually) → details or row might not reflect true server state  
+    • MAY trigger each todoAtomFamily(id) default fetch on next render (if cache not seeded) → N+1 queries or flicker  
+    • Result: UI out of sync, user sees stale row, or lots of network churn  
+---  END OLD METHOD ---
+
+    |
+    V
+---  CORRECT FLOW using your custom hook ---
+    • useInvalidateTodos() called
+        → reads current searchTermAtom & todoListFilterAtom (so knows params = {search, filter, page..., pageSize...})
+        → resets todoListQueryFamily(params)  [clearing the right instance]
+        → snapshot.getPromise(todoListQueryFamily(params)) → await new fresh list from server
+        → set(seedTodosCacheSelector, list) → seed cache atom with all todos from fresh list
+        → for each todo in list: set(todoAtomFamily(todo.id), todo) → update per-id atoms to fresh server data
+    • After this:
+        → list selector cached fresh list → UI list picks it up instantly
+        → each row’s todoAtomFamily(id) already has fresh data → no per-row fetch needed
+        → statusAtomFamily(X) is set to "idle" (you did that after API return)
+        → UI unified: row reflects toggled completed status, list shows change, details will show change
+    |
+    V
+USER sees:
+    • instant optimistic toggle (via atomFamily)
+    • shortly after, full server-confirmed update (via invalidate hook)
+    • minimal network calls (just list fetch + maybe the toggle API)  
